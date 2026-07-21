@@ -1,0 +1,120 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity top_bram is
+port(
+    clock       : in  std_logic;
+    resetn      : in  std_logic;
+    chipselect  : in  std_logic;
+    writedata   : in  std_logic_vector(31 downto 0);
+    write_en    : in  std_logic;
+    readdata    : out std_logic_vector(31 downto 0);
+    add         : in  std_logic_vector(1 downto 0);
+    read_en     : in  std_logic
+);
+end top_bram;
+
+architecture rtl of top_bram is
+
+    component bram
+    port(
+        address : in  std_logic_vector(9 downto 0);
+        clock   : in  std_logic;
+        data    : in  std_logic_vector(7 downto 0);
+        wren    : in  std_logic;
+        q       : out std_logic_vector(7 downto 0)
+    );
+    end component;
+
+    -- Registradores com valores iniciais explícitos para evitar 'U'/'X'
+    signal reg_address : std_logic_vector(9 downto 0) := (others => '0');
+    signal reg_data    : std_logic_vector(7 downto 0) := (others => '0');
+    signal reg_nios_checksum : std_logic_vector(7 downto 0) := (others => '0');
+    signal reg_nios_seq      : std_logic_vector(7 downto 0) := (others => '0');
+    
+    signal wren_sig    : std_logic := '0';
+    signal q_sig       : std_logic_vector(7 downto 0) := (others => '0');
+    signal hw_checksum : unsigned(7 downto 0) := (others => '0');
+    signal read_state  : integer range 0 to 2 := 0;
+
+begin
+
+    bram_inst : bram
+    port map(
+        address => reg_address,
+        clock   => clock,
+        data    => reg_data,
+        wren    => wren_sig,
+        q       => q_sig
+    );
+
+    process(clock, resetn)
+    begin
+        if resetn = '0' then
+            reg_address <= (others => '0');
+            reg_data    <= (others => '0');
+            wren_sig    <= '0';
+            hw_checksum <= (others => '0');
+            reg_nios_checksum <= (others => '0');
+            reg_nios_seq      <= (others => '0');
+            read_state  <= 0;
+        elsif rising_edge(clock) then
+            wren_sig <= '0';
+
+            if chipselect = '1' and write_en = '1' then
+                case add is
+                    when "00" => reg_address <= writedata(9 downto 0);
+                    when "01" => reg_data    <= writedata(7 downto 0);
+                    when "10" =>
+                        reg_nios_seq      <= writedata(31 downto 24);
+                        reg_nios_checksum <= writedata(23 downto 16);
+                        if writedata(0) = '1' then
+                            wren_sig <= '1';
+                            hw_checksum <= hw_checksum + unsigned(reg_data);
+                        end if;
+                        if writedata(1) = '1' then
+                            read_state <= 1;
+                        end if;
+                        if writedata(2) = '1' then
+                            hw_checksum <= (others => '0');
+                        end if;
+                    when others => null;
+                end case;
+            end if;
+
+            if read_state = 1 then
+                read_state <= 2;
+            elsif read_state = 2 then
+                reg_data <= q_sig;
+                read_state <= 0;
+            end if;
+        end if;
+    end process;
+
+    -- Lógica de Saída Avalon
+    process(chipselect, read_en, add, reg_address, reg_data, hw_checksum, reg_nios_seq, reg_nios_checksum)
+        variable match_v : std_logic;
+    begin
+        -- Garantir que match_v seja estável
+        if reg_nios_checksum = std_logic_vector(hw_checksum) then
+            match_v := '1';
+        else
+            match_v := '0';
+        end if;
+
+        -- Req 5: Tri-state (Z). 
+        -- Se o simulador der 'X', a causa agora será externa, pois todos os sinais internos estão zerados.
+        if (chipselect = '1' and read_en = '1') then
+            case add is
+                when "00" => readdata <= (31 downto 10 => '0') & reg_address;
+                when "01" => readdata <= (31 downto 8 => '0') & reg_data;
+                when "10" => readdata <= reg_nios_seq & reg_nios_checksum & std_logic_vector(hw_checksum) & match_v & "0000000";
+                when others => readdata <= (others => '0');
+            end case;
+        else
+            readdata <= (others => 'Z');
+        end if;
+    end process;
+
+end rtl;

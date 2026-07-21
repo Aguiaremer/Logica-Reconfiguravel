@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciador de Filtros de Áudio DSP</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1, h2 { color: #4A90E2; }
+        .box { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px; background: #fafafa; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select, button { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { background-color: #4A90E2; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 15px;}
+        button:hover { background-color: #357ABD; }
+        ul { list-style: none; padding: 0; }
+        li { padding: 15px; background: #eee; margin-bottom: 10px; border-radius: 4px; }
+        .file-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .file-actions a { margin-left: 10px; text-decoration: none; color: #4A90E2; font-weight: bold;}
+        .file-actions a.del { color: #d9534f; }
+        audio { width: 100%; margin-top: 5px; display: block; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎛️ Painel de Controle DSP & Filtros de Áudio</h1>
+    
+    <div class="box">
+        <h2>1. Enviar Novo Arquivo de Áudio (.wav)</h2>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".wav" required>
+            <button type="submit">Enviar Arquivo</button>
+        </form>
+    </div>
+
+    <div class="box">
+        <h2>2. Configurar e Filtrar Áudio</h2>
+        <form action="/process" method="post">
+            <label for="ipv4">Endereço IP do Servidor TCP Remoto:</label>
+            <input type="text" id="ipv4" name="ipv4" value="192.168.0.137" required>
+
+            <label for="filename">Selecione o arquivo de entrada:</label>
+            <select id="filename" name="filename" required>
+                <option value="" disabled selected>-- Escolha um arquivo --</option>
+                {% for file in input_files %}
+                    <option value="{{ file }}">{{ file }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="filter_type">Tipo de Filtro:</label>
+            <select id="filter_type" name="filter_type" required>
+                <option value="low-pass">Low-Pass (Passa-Baixa)</option>
+                <option value="high-pass">High-Pass (Passa-Alta)</option>
+                <option value="band-pass">Band-Pass (Passa-Banda)</option>
+                <option value="notch">Notch (Rejeita-Banda)</option>
+            </select>
+
+            <label for="fc1">Frequência de Corte 1 (fc1 Hz):</label>
+            <input type="number" id="fc1" name="fc1" value="1000" required>
+
+            <label for="fc2">Frequência de Corte 2 (fc2 Hz - Apenas para Band-Pass e Notch):</label>
+            <input type="number" id="fc2" name="fc2" value="2000">
+
+            <button type="submit">Enviar para Processamento Remoto</button>
+        </form>
+    </div>
+
+    <div class="box">
+        <h2>3. Repositório de Arquivos & Player</h2>
+        
+        <h3>Originais (Uploads)</h3>
+        <ul>
+            {% for file in input_files %}
+            <li>
+                <div class="file-info">
+                    <strong>🎵 {{ file }}</strong>
+                    <div class="file-actions">
+                        <a href="/download/uploads/{{ file }}">Baixar</a>
+                        <a class="del" href="/delete/uploads/{{ file }}">Excluir</a>
+                    </div>
+                </div>
+                <audio controls>
+                    <source src="/download/uploads/{{ file }}" type="audio/wav">
+                    Seu navegador não suporta o elemento de áudio.
+                </audio>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <h3>Processados (Resultados Filtrados)</h3>
+        <ul>
+            {% for file in output_files %}
+            <li>
+                <div class="file-info">
+                    <strong>🎛️ {{ file }}</strong>
+                    <div class="file-actions">
+                        <a href="/download/outputs/{{ file }}">Baixar</a>
+                        <a class="del" href="/delete/outputs/{{ file }}">Excluir</a>
+                    </div>
+                </div>
+                <audio controls>
+                    <source src="/download/outputs/{{ file }}" type="audio/wav">
+                    Seu navegador não suporta o elemento de áudio.
+                </audio>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+</body>
+</html>

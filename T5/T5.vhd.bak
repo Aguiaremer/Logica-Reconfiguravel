@@ -1,0 +1,192 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity T5 is
+    port (
+        clk      : in  std_logic;
+        rst      : in  std_logic;
+        -- Sinais para monitoramento (opcional, para ver no Simulation)
+        ready_out : out std_logic
+    );
+end T5;
+
+architecture Behavioral of T5 is
+
+    -- Constantes de Configuração
+    constant DEPTH_BRAM : integer := 2048;
+    constant DEPTH_FIFO : integer := 1024;
+    constant UPPER_LIMIT : integer := 768; -- 75% de 1024
+    constant LOWER_LIMIT : integer := 512; -- 50% de 1024
+
+    -- Estados da FSM de Escrita (BRAM1 -> FIFO)
+    type state_wr_type is (RESET, LOAD_BRAM, WR_FIFO, WR_WAIT);
+    signal state_wr : state_wr_type := RESET;
+
+    -- Estados da FSM de Leitura (FIFO -> BRAM2)
+    type state_rd_type is (RESET_RD, RD_FIFO, RD_WAIT);
+    signal state_rd : state_rd_type := RESET_RD;
+
+    -- Sinais Internos BRAM 1
+    signal addr1 : std_logic_vector(10 downto 0) := (others => '0');
+    signal di1   : std_logic_vector(7 downto 0)  := (others => '0');
+    signal we1   : std_logic := '0';
+    signal do1   : std_logic_vector(7 downto 0);
+
+    -- Sinais Internos FIFO
+    signal wr_en_fifo : std_logic := '0';
+    signal rd_en_fifo : std_logic := '0';
+    signal usedw_fifo  : integer range 0 to DEPTH_FIFO;
+    signal data_fifo_out : std_logic_vector(7 downto 0);
+    signal empty_fifo, full_fifo : std_logic;
+
+    -- Sinais Internos BRAM 2
+    signal addr2 : std_logic_vector(10 downto 0) := (others => '0');
+    signal we2   : std_logic := '0';
+
+    -- Controle de Velocidade (7x mais lento)
+    signal speed_cnt : integer range 0 to 6 := 0;
+    signal tick_7x   : std_logic := '0';
+
+begin
+
+    ------------------------------------------------------------------
+    -- 1. INSTANCIAÇÃO DOS COMPONENTES
+    ------------------------------------------------------------------
+    
+    BRAM1: entity work.BRAM
+        port map (clk => clk, en => '1', we => we1, addr => addr1, di => di1, do => do1);
+
+    FIFO_INST: entity work.fifo
+        port map (clk => clk, rst => rst, wr_en => wr_en_fifo, data_in => do1, 
+                  full => full_fifo, rd_en => rd_en_fifo, data_out => data_fifo_out, 
+                  empty => empty_fifo, usedw => usedw_fifo);
+
+    BRAM2: entity work.BRAM
+        port map (clk => clk, en => '1', we => we2, addr => addr2, di => data_fifo_out, do => open);
+
+    ------------------------------------------------------------------
+    -- 2. DIVISOR DE VELOCIDADE (7x mais lento para Leitura)
+    ------------------------------------------------------------------
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if speed_cnt = 6 then
+                speed_cnt <= 0;
+                tick_7x <= '1';
+            else
+                speed_cnt <= speed_cnt + 1;
+                tick_7x <= '0';
+            end if;
+        end if;
+    end process;
+
+------------------------------------------------------------------
+    -- 3. MÁQUINA DE ESTADOS: ESCRITA (BRAM1 -> FIFO)
+    ------------------------------------------------------------------
+    process(clk)
+        variable v_addr1 : integer range 0 to DEPTH_BRAM := 0;
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                state_wr <= RESET;
+                v_addr1 := 0;
+                we1 <= '0';
+                wr_en_fifo <= '0';
+            else
+                case state_wr is
+                    when RESET =>
+                        v_addr1 := 0;
+                        state_wr <= LOAD_BRAM;
+
+                    when LOAD_BRAM =>
+                        if v_addr1 < DEPTH_BRAM then
+                            we1 <= '1';
+                            addr1 <= std_logic_vector(to_unsigned(v_addr1, 11));
+                            di1   <= std_logic_vector(to_unsigned(v_addr1 mod 256, 8));
+                            v_addr1 := v_addr1 + 1;
+                        else
+                            we1 <= '0';
+                            v_addr1 := 0; 
+                            state_wr <= WR_FIFO;
+                        end if;
+
+                    when WR_FIFO =>
+                        if v_addr1 < DEPTH_BRAM then
+                            if usedw_fifo >= UPPER_LIMIT then
+                                wr_en_fifo <= '0';
+                                we1 <= '0';
+                                state_wr <= WR_WAIT;
+                            else
+                                we1 <= '0';
+                                addr1 <= std_logic_vector(to_unsigned(v_addr1, 11));
+                                wr_en_fifo <= '1';
+                                v_addr1 := v_addr1 + 1;
+                            end if;
+                        else
+                            wr_en_fifo <= '0';
+                        end if;
+
+                    when WR_WAIT =>
+                        if usedw_fifo <= LOWER_LIMIT then
+                            state_wr <= WR_FIFO;
+                        end if;
+                end case;
+            end if;
+        end if;
+    end process;
+
+    ------------------------------------------------------------------
+    -- 4. MÁQUINA DE ESTADOS: LEITURA (FIFO -> BRAM2)
+    ------------------------------------------------------------------
+    process(clk)
+        variable v_addr2 : integer range 0 to DEPTH_BRAM := 0;
+        variable delay_reg : std_logic := '0'; -- Para compensar o atraso da FIFO
+    begin
+        if rising_edge(clk) then
+            if rst = '1' then
+                state_rd <= RESET_RD;
+                v_addr2 := 0;
+                rd_en_fifo <= '0';
+                we2 <= '0';
+                delay_reg := '0';
+            elsif tick_7x = '1' then 
+                case state_rd is
+                    when RESET_RD =>
+                        if usedw_fifo > 0 then
+                            state_rd <= RD_FIFO;
+                        end if;
+
+                    when RD_FIFO =>
+                        if empty_fifo = '0' and v_addr2 < DEPTH_BRAM then
+                            rd_en_fifo <= '1';
+                            -- O pulso de escrita na BRAM2 (we2) deve ser 
+                            -- sincronizado com a saída do dado da FIFO
+                            if delay_reg = '1' then
+                                we2 <= '1';
+                                addr2 <= std_logic_vector(to_unsigned(v_addr2, 11));
+                                v_addr2 := v_addr2 + 1;
+                            else
+                                we2 <= '0';
+                                delay_reg := '1'; -- Espera 1 tick para o dado sair
+                            end if;
+                        else
+                            rd_en_fifo <= '0';
+                            we2 <= '0';
+                            delay_reg := '0';
+                            state_rd <= RD_WAIT;
+                        end if;
+
+                    when RD_WAIT =>
+                        if usedw_fifo > 1 then
+                            state_rd <= RD_FIFO;
+                        end if;
+                end case;
+            else
+                we2 <= '0';
+                rd_en_fifo <= '0';
+            end if;
+        end if;
+    end process;	
+
+end Behavioral;

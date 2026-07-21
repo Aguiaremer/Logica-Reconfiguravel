@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTTP Chat Client</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f2f5;
+      }
+      .chat-container {
+        width: 400px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .chat-header {
+        background-color: #333;
+        color: white;
+        padding: 15px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .chat-box {
+        height: 350px;
+        padding: 15px;
+        overflow-y: auto;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background-color: #fafafa;
+      }
+      .message {
+        padding: 10px 15px;
+        border-radius: 15px;
+        max-width: 75%;
+        word-wrap: break-word;
+        font-size: 14px;
+      }
+      .user-msg {
+        background-color: #0084ff;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+      }
+      .server-msg {
+        background-color: #e4e6eb;
+        color: black;
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+      }
+      .input-area {
+        display: flex;
+        padding: 10px;
+        gap: 10px;
+        background: #fff;
+      }
+      /* The input is limited to 100 characters via the HTML maxlength attribute */
+      input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        outline: none;
+        font-size: 14px;
+      }
+      button {
+        padding: 10px 20px;
+        background-color: #0084ff;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #0073e6;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">HTTP Server (http://192.168.0.144:30)</div>
+      <div class="chat-box" id="chatBox">
+        <div class="message server-msg">
+          System: Ready to send HTTP requests.
+        </div>
+      </div>
+      <div class="input-area">
+        <input
+          type="text"
+          id="messageInput"
+          maxlength="100"
+          placeholder="Type message (max 100 chars)..."
+        />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+
+    <script>
+      const chatBox = document.getElementById("chatBox");
+      const messageInput = document.getElementById("messageInput");
+      const sendBtn = document.getElementById("sendBtn");
+
+      // The target HTTP server URL
+      const serverUrl = "http://192.168.0.144:30";
+
+      // Helper to add messages to the UI
+      function appendMessage(text, className) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", className);
+        msgDiv.textContent = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to bottom
+      }
+
+      // Handle Send Button Click
+      sendBtn.addEventListener("click", async () => {
+        const text = messageInput.value.trim();
+
+        if (text.length > 0 && text.length <= 100) {
+          // 1. Display user message in the chat
+          appendMessage(text, "user-msg");
+
+          // 2. Clear input and disable button while waiting
+          messageInput.value = "";
+          sendBtn.disabled = true;
+
+          // 3. Send the HTTP request
+          try {
+            // Using POST to send the text content in the body
+            const response = await fetch(serverUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "text/plain",
+              },
+              body: text,
+            });
+
+            // 4. Handle the server's response
+            if (response.ok) {
+              const responseText = await response.text();
+              appendMessage(responseText, "server-msg");
+            } else {
+              appendMessage(
+                `System: Server returned error ${response.status}`,
+                "server-msg",
+              );
+            }
+          } catch (error) {
+            console.error("HTTP Request failed:", error);
+            appendMessage(
+              "System: Connection failed. Is the server running and CORS enabled?",
+              "server-msg",
+            );
+          } finally {
+            // Re-enable the send button
+            sendBtn.disabled = false;
+            messageInput.focus();
+          }
+        }
+      });
+
+      // Handle Enter Key
+      messageInput.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          sendBtn.click();
+        }
+      });
+    </script>
+  </body>
+</html>

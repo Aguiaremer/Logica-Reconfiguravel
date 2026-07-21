@@ -1,0 +1,224 @@
+m255
+K3
+13
+cModel Technology
+Z0 dC:\SNios_new\HSys\testbench\mentor
+Ehsys_jtag_uart_0
+Z1 w1779333440
+Z2 DPx4 ieee 15 std_logic_arith 0 22 4`Y?g_lkdn;7UL9IiJck01
+Z3 DPx4 ieee 18 std_logic_unsigned 0 22 RYmj;=TK`k=k>D@Cz`zoB3
+Z4 DPx4 ieee 11 numeric_std 0 22 O3PF8EB`?j9=z7KT`fn941
+Z5 DPx3 std 6 textio 0 22 5>J:;AW>W0[[dW0I6EN1Q0
+Z6 DPx4 ieee 14 std_logic_1164 0 22 5=aWaoGZSMWIcH0i^f`XF1
+Z7 DPx6 altera 25 altera_europa_support_lib 0 22 ]K^I5dOJEzAULGF>=EIc]2
+Z8 dC:\SNios_new\HSys\testbench\mentor
+Z9 8./..//HSys_tb/simulation/submodules/HSys_jtag_uart_0.vhd
+Z10 F./..//HSys_tb/simulation/submodules/HSys_jtag_uart_0.vhd
+l0
+L455
+V4R?VIkMXXjNPC;P4:Oh;P1
+!s100 1hjBRMTlb5P>eb0IfWS<`2
+Z11 OV;C;10.1d;51
+32
+!i10b 1
+Z12 !s108 1779334431.101000
+Z13 !s90 -reportprogress|300|./..//HSys_tb/simulation/submodules/HSys_jtag_uart_0.vhd|-work|jtag_uart_0|
+Z14 !s107 ./..//HSys_tb/simulation/submodules/HSys_jtag_uart_0.vhd|
+Z15 o-work jtag_uart_0 -O0
+Z16 tExplicit 1
+Aeuropa
+R2
+R3
+R4
+R5
+R6
+R7
+Z17 DEx4 work 16 hsys_jtag_uart_0 0 22 4R?VIkMXXjNPC;P4:Oh;P1
+l573
+L478
+Z18 VG:@SJTP_DIgKdCYKDgn]Y2
+Z19 !s100 h15=95E5TzLnoM9?b268N3
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Ehsys_jtag_uart_0_scfifo_r
+R1
+R2
+R3
+R4
+R5
+R6
+R7
+R8
+R9
+R10
+l0
+L313
+VCMWi1^;eL_UdX62o7O1Qj2
+!s100 W>K[PiXdmj8JQQCYJ`1:L0
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Aeuropa
+R2
+R3
+R4
+R5
+R6
+R7
+Z20 DEx4 work 25 hsys_jtag_uart_0_scfifo_r 0 22 CMWi1^;eL_UdX62o7O1Qj2
+l381
+L332
+Z21 VfVLC?_eUgGE?<Q@Fjog=k0
+Z22 !s100 l^XAiUAV[gDlh`nD6CzA20
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Ehsys_jtag_uart_0_scfifo_w
+R1
+R2
+R3
+R4
+R5
+R6
+R7
+R8
+R9
+R10
+l0
+L95
+VBS1S>Mf5UgDTWm8CRb=m@0
+!s100 :TdkD9J38aD[0]l8zIdZa3
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Aeuropa
+R2
+R3
+R4
+R5
+R6
+R7
+Z23 DEx4 work 25 hsys_jtag_uart_0_scfifo_w 0 22 BS1S>Mf5UgDTWm8CRb=m@0
+l162
+L113
+Z24 VaJUc7aT]7;^@V7@4:V<^N2
+Z25 !s100 ?2OQaB3A4X3F25gk;^j=;2
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Ehsys_jtag_uart_0_sim_scfifo_r
+R1
+Z26 DPx9 altera_mf 20 altera_mf_components 0 22 dN>@>Mze:JEj3f_7zNO2S2
+R2
+R3
+R4
+R5
+R6
+R7
+R8
+R9
+R10
+l0
+L233
+VXk^383VfK>?R>K^_L>zbP2
+!s100 Dk]lHLdlUjhSM]SGo9[Kg2
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Aeuropa
+R26
+R2
+R3
+R4
+R5
+R6
+R7
+Z27 DEx4 work 29 hsys_jtag_uart_0_sim_scfifo_r 0 22 Xk^383VfK>?R>K^_L>zbP2
+l257
+L249
+Z28 Vm]<zYbAOKlO<07PSGe]bV2
+Z29 !s100 K>I>52lD`LeUbYWG=7<nI0
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Ehsys_jtag_uart_0_sim_scfifo_w
+R1
+R26
+R2
+R3
+R4
+R5
+R6
+R7
+R8
+R9
+R10
+l0
+L32
+VdFmK`9HZF6o4U?hRNg5CM1
+!s100 4gmBnl@FR6O3Uz@ZnXaB91
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16
+Aeuropa
+R26
+R2
+R3
+R4
+R5
+R6
+R7
+Z30 DEx4 work 29 hsys_jtag_uart_0_sim_scfifo_w 0 22 dFmK`9HZF6o4U?hRNg5CM1
+l50
+L48
+Z31 V;`GD[nRQ<U7zL9iZDl<U>2
+Z32 !s100 bP09LWeUL8L:W^67d^88l1
+R11
+32
+!i10b 1
+R12
+R13
+R14
+R15
+R16

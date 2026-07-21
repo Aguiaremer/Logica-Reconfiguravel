@@ -1,0 +1,70 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity T4_tb is
+end entity;
+
+architecture sim of T4_tb is
+    -- Sinais para conectar na entidade
+    signal clk      : std_logic := '0';
+    signal entrada  : std_logic_vector(4 downto 0) := (others => '0');
+    signal out_b1   : std_logic_vector(2 downto 0);
+    signal out_b2   : std_logic_vector(2 downto 0);
+    signal out_b3   : std_logic_vector(2 downto 0);
+    signal out_b4   : std_logic_vector(2 downto 0);
+    signal out_b5   : std_logic_vector(2 downto 0);
+    signal out_b6   : std_logic_vector(2 downto 0);
+
+    constant clk_period : time := 10 ns;
+
+begin
+    -- Instanciação da Unidade Sob Teste (UUT)
+    uut: entity work.T4
+        port map (
+            clk     => clk,
+            entrada => entrada,
+            out_b1  => out_b1,
+            out_b2  => out_b2,
+            out_b3  => out_b3,
+            out_b4  => out_b4,
+            out_b5  => out_b5,
+            out_b6  => out_b6
+        );
+
+    -- Gerador de Clock
+    clk_process : process
+    begin
+        clk <= '0';
+        wait for clk_period/2;
+        clk <= '1';
+        wait for clk_period/2;
+    end process;
+
+    -- Processo de Estímulos
+    stim_proc: process
+    begin
+        -- Caso 1: Zero bits '1'
+        entrada <= "00000";
+        wait for clk_period * 2;
+
+        -- Caso 2: Três bits '1'
+        entrada <= "10110";
+        wait for clk_period * 2;
+
+        -- Caso 3: Um bit '1'
+        entrada <= "00010";
+        wait for clk_period * 2;
+
+        -- Caso 4: Todos os bits '1' (Máximo)
+        entrada <= "11111";
+        wait for clk_period * 2;
+
+        -- Caso 5: Outra combinação (Dois bits)
+        entrada <= "10001";
+        wait for clk_period * 2;
+
+        wait; -- Encerra a simulação
+    end process;
+
+end architecture;

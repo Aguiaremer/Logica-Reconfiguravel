@@ -1,0 +1,3 @@
+Para executar o frontend no Windows, primeiro instale as dependências do Python com o comando: pip install flask numpy
+
+Em seguida, execute o arquivo app.py. Após a inicialização, abra o navegador e acesse o endereço exibido pelo programa.

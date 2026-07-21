@@ -1,0 +1,155 @@
+library ieee;
+  use ieee.std_logic_1164.all;
+  use ieee.numeric_std.all;
+
+entity user_hw is
+  generic (
+    data_width  : integer := 32; -- Assuming 16-bit audio/signal data
+    coeff_width : integer := 32  -- 16-bit coefficients
+  );
+  port (
+    clk     : in    std_logic;
+    reset_n : in    std_logic;
+
+    -- ====================================================================
+    -- Memory-Mapped Interface (For Coefficient Configuration)
+    -- Configured here as a simple generic bus (easily fits Avalon-MM / AXI-Lite)
+    -- ====================================================================
+    mm_write     : in    std_logic;
+    mm_addr      : in    std_logic_vector(5 downto 0); -- 2^6 = 64 addresses
+    mm_writedata : in    std_logic_vector(coeff_width - 1 downto 0);
+
+    -- ====================================================================
+    -- Input AXI-Stream Interface (Slave)
+    -- ====================================================================
+    s_axis_tdata  : in    std_logic_vector(data_width - 1 downto 0);
+    s_axis_tvalid : in    std_logic;
+    s_axis_tready : out   std_logic;
+    s_axis_tlast  : in    std_logic;
+
+    -- ====================================================================
+    -- Output AXI-Stream Interface (Master)
+    -- ====================================================================
+    m_axis_tdata  : out   std_logic_vector(data_width - 1 downto 0);
+    m_axis_tvalid : out   std_logic;
+    m_axis_tready : in    std_logic;
+    m_axis_tlast  : out   std_logic
+  );
+end entity user_hw;
+
+architecture a_user_hw of user_hw is
+
+  -- Array types for shift registers and coefficients
+
+  type coefficients_array_type is array (0 to 63) of signed(COEFF_WIDTH - 1 downto 0);
+
+  type data_array_type is array (0 to 63) of signed(DATA_WIDTH - 1 downto 0);
+
+  type product_array_type is array (0 to 63) of signed((DATA_WIDTH + COEFF_WIDTH) - 1 downto 0);
+
+  -- Registers
+  signal coefficients_regs : coefficients_array_type;
+  signal data_shifter      : data_array_type;
+
+  -- Pipeline stages for the FIR math
+  signal product_regs : product_array_type;
+  signal acc_reg      : signed((data_width + coeff_width) + 6 downto 0); -- Extra bits for bit growth
+
+  -- Control signal pipelining
+  signal pipe_valid : std_logic_vector(2 downto 0);
+  signal pipe_last  : std_logic_vector(2 downto 0);
+
+  signal stream_stall : std_logic;
+
+  signal m_axis_tvalid_internal : std_logic;
+
+begin
+
+  -- ====================================================================
+  -- 1. Coefficient Register Write Logic (Memory-Mapped)
+  -- ====================================================================
+  coefficient_proc : process (clk, reset_n) is
+  begin
+
+    if (reset_n = '0') then
+      coefficients_regs <= (others => (others => '0'));
+    elsif (clk'EVENT and clk = '1') then
+      if (mm_write = '1') then
+        coefficients_regs(to_integer(unsigned(mm_addr))) <= signed(mm_writedata);
+      end if;
+    end if;
+
+  end process coefficient_proc;
+
+  -- ====================================================================
+  -- 2. Streaming FIR Core Logic
+  -- ====================================================================
+
+  -- We allow data input only if the downstream master side isn't stalling us
+  stream_stall  <= m_axis_tvalid_internal and not m_axis_tready; -- Internal valid helper needed if reading back output
+  s_axis_tready <= not stream_stall;
+
+  process_data_proc : process (clk, reset_n) is
+
+    variable acc_var : signed((data_width + coeff_width) + 5 downto 0);
+
+  begin
+
+    if (reset_n = '0') then
+      data_shifter <= (others => (others => '0'));
+      product_regs <= (others => (others => '0'));
+      acc_reg      <= (others => '0');
+      pipe_valid   <= (others => '0');
+      pipe_last    <= (others => '0');
+    elsif (clk'EVENT and clk = '1') then
+      -- Only advance the pipeline if we are not stalled by the downstream receiver
+      if (stream_stall = '0') then
+        -- Control Pipeline
+        pipe_valid <= pipe_valid(1 downto 0) & (s_axis_tvalid);
+        pipe_last  <= pipe_last(1 downto 0) & (s_axis_tlast);
+
+        -- Stage 1: Shift Register (Only shift when new valid data arrives)
+        if (s_axis_tvalid = '1') then
+
+          for i in 1 to 63 loop
+
+            data_shifter(i) <= data_shifter(i - 1);
+
+          end loop;
+
+          data_shifter(0) <= signed(s_axis_tdata);
+        end if;
+
+        -- Stage 2: Multiply (Parallel multipliers)
+        for i in 0 to 63 loop
+
+          product_regs(i) <= data_shifter(i) * coefficients_regs(i);
+
+        end loop;
+
+        -- Stage 3: Accumulate (Pipelined Adder Tree or Combinational depending on clock constraints)
+        acc_var := (others => '0');
+
+        for i in 0 to 63 loop
+
+          acc_var := acc_var + resize(product_regs(i), acc_var'length);
+
+        end loop;
+
+        acc_reg <= acc_var;
+      end if;
+    end if;
+
+  end process process_data_proc;
+
+  -- ====================================================================
+  -- 3. Output Assignment (Truncating back to DATA_WIDTH)
+  -- ====================================================================
+  -- Note: Adjust the slice indices below based on your coefficient scaling (Fixed-point math)
+  m_axis_tdata  <= std_logic_vector(acc_reg((data_width + coeff_width - 1) downto coeff_width));
+  m_axis_tvalid <= pipe_valid(2);
+  m_axis_tlast  <= pipe_last(2);
+  -- Helper signal definition for stall detection
+  m_axis_tvalid_internal <= pipe_valid(2);
+
+end architecture a_user_hw;

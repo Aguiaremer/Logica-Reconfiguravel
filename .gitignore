@@ -1,0 +1,23 @@
+# Quartus / ModelSim temporários e compilações
+**/db/
+**/incremental_db/
+**/simulation/
+**/work/
+**/rtl_work/
+**/gate_work/
+*.qws
+*.rpt
+*.smsg
+*.summary
+*.done
+*.jdi
+*.pin
+*.sof
+*.pof
+
+# Qsys / Nios II gerados
+**/.qsys_edit/
+**/software/*/obj/
+**/software/*/mem_init/
+*.sopcinfo
+*.spd

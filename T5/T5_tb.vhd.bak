@@ -1,0 +1,56 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity T5_tb is
+end T5_tb;
+
+architecture sim of T5_tb is
+
+    -- Sinais de interface
+    signal clk      : std_logic := '0';
+    signal reset    : std_logic := '0';
+    signal completo : std_logic;
+
+    -- Período do clock: 20ns (50MHz)
+    constant clk_period : time := 20 ns;
+
+begin
+
+    -- Instância do Top Level
+    uut: entity work.T5
+        port map (
+            clk      => clk,
+            reset    => reset,
+            completo => completo
+        );
+
+    -- Gerador de Clock
+    clk_process : process
+    begin
+        clk <= '0';
+        wait for clk_period/2;
+        clk <= '1';
+        wait for clk_period/2;
+    end process;
+
+    -- Processo de Estímulo
+    stim_proc: process
+    begin		
+        -- Aplica Reset
+        reset <= '1';
+        wait for 100 ns;
+        reset <= '0';
+
+        -- Aguarda o sinal de completo
+        -- Isso vai demorar, pois a BRAM2 é escrita 7x mais devagar
+        wait until completo = '1';
+        
+        report "Simulacao Finalizada com Sucesso: BRAM2 preenchida." 
+        severity note;
+
+        wait for 100 ns;
+        assert false report "Fim da simulacao" severity failure;
+    end process;
+
+end sim;

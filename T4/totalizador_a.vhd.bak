@@ -1,0 +1,44 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity totalizador_a is
+    port(
+        clk   : in  std_logic;
+        rst   : in  std_logic;
+        din   : in  std_logic_vector(4 downto 0);
+        count : out unsigned(2 downto 0)
+    );
+end;
+
+architecture rtl of totalizador_a is
+    signal idx : integer range 0 to 5 := 0;
+    signal acc : unsigned(2 downto 0) := (others => '0');
+begin
+
+process(clk, rst)
+begin
+    if rst = '1' then
+        idx <= 0;
+        acc <= (others => '0');
+
+    elsif rising_edge(clk) then
+
+        if idx < 5 then
+            if din(idx) = '1' then
+                acc <= acc + 1;
+            end if;
+            idx <= idx + 1;
+
+        else
+            -- terminou a palavra
+            idx <= 0;
+            acc <= (others => '0');
+        end if;
+
+    end if;
+end process;
+
+count <= acc;
+
+end rtl;

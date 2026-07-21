@@ -1,0 +1,95 @@
+#include <stdio.h>
+#include <string.h>
+#include "system.h"
+#include "io.h"
+
+// Deslocamentos dos registradores no espaço de memória Avalon
+#define ADDR_REG_OFF      0
+#define DATA_REG_OFF      4
+#define CTRL_REG_OFF      8
+
+// Máscaras de controle para barramento e periféricos
+#define MEM_WRITE_BIT     (1 << 0)
+#define MEM_READ_BIT      (1 << 1)
+#define CHK_RESET_BIT     (1 << 2)
+
+void write_hardware_byte(unsigned int memory_idx, unsigned char byte_val) {
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, ADDR_REG_OFF, memory_idx);
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, DATA_REG_OFF, (unsigned int)byte_val);
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, CTRL_REG_OFF, MEM_WRITE_BIT);
+}
+
+unsigned char read_hardware_byte(unsigned int memory_idx) {
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, ADDR_REG_OFF, memory_idx);
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, CTRL_REG_OFF, MEM_READ_BIT);
+
+    // Aguarda ciclos de clock para estabilização da leitura na BRAM
+    volatile int delay_counter = 50;
+    while(delay_counter > 0) {
+        delay_counter--;
+    }
+
+    return (unsigned char)IORD_32DIRECT(TOP_AVALON_0_BASE, DATA_REG_OFF);
+}
+
+int main()
+{
+    // Cadeia de caracteres obrigatória do estudante
+    const char target_string[] = "+++--+++ EMERSON FELIPE DA COSTA AGUIAR  +++--+++";
+    int length = strlen(target_string);
+
+    unsigned char sequence_id = 1;
+    unsigned int calc_accum = 0;
+    unsigned char expected_chk = 0;
+
+    int idx;
+
+    printf("\n>>> Start <<<\n");
+    printf("Payload: [%s]\n", target_string);
+    printf("Dimensao: %d bytes\n", length);
+
+    // [Passo 1] Reinicialização dos registradores de verificação no HW
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, CTRL_REG_OFF, CHK_RESET_BIT);
+
+    // [Passo 2] Transmissão de dados e acumulação do checksum via software
+    for (idx = 0; idx < length; idx++) {
+        unsigned char current_char = (unsigned char)target_string[idx];
+        write_hardware_byte(idx, current_char);
+        calc_accum += current_char;
+    }
+    expected_chk = (unsigned char)(calc_accum & 0xFF);
+
+    // [Passo 3] Procedimento de Validação (Handshake)
+    unsigned int validation_cmd = ((unsigned int)sequence_id << 24) | ((unsigned int)expected_chk << 16);
+    IOWR_32DIRECT(TOP_AVALON_0_BASE, CTRL_REG_OFF, validation_cmd);
+
+    // Pequena espera para propagação dos flags de igualdade no hardware
+    for (idx = 100; idx > 0; idx--);
+
+    // [Passo 4] Captura do registrador de status e decodificação
+    unsigned int ctrl_status = IORD_32DIRECT(TOP_AVALON_0_BASE, CTRL_REG_OFF);
+    unsigned char reported_chk = (unsigned char)((ctrl_status >> 8) & 0xFF);
+    unsigned char dynamic_match = (unsigned char)((ctrl_status >> 7) & 0x01);
+
+    printf("===========================================\n");
+    printf("ID SEQUENCIA : %d\n", sequence_id);
+    printf("SOMATORIA SW : %u\n", calc_accum);
+    printf("CHECKSUM SW  : 0x%02X\n", expected_chk);
+    printf("CHECKSUM HW  : 0x%02X\n", reported_chk);
+    printf("STATUS VALIDATION : %s\n", dynamic_match ? "OK (MATCH)" : "FAIL (MISMATCH)");
+    printf("===========================================\n");
+
+    // [Passo 5] Rotina de varredura de leitura para rastreio de ondas no ModelSim
+    printf("Disparando ciclos de leitura para analise de sinal...\n");
+    for (idx = 0; idx < length; idx++) {
+        unsigned char read_back = read_hardware_byte(idx);
+        // printf("%c", read_back); // Linha para depuração via terminal UART se necessário
+    }
+    printf("\nExecucao finalizada.\n");
+
+    while(1) {
+        // Trava a CPU após a conclusão do teste
+    }
+
+    return 0;
+}

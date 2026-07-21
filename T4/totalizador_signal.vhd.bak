@@ -1,0 +1,39 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity totalizador_signal is
+    port(
+        clk  : in  std_logic;
+        din  : in  std_logic_vector(4 downto 0);
+        count: out unsigned(2 downto 0)
+    );
+end;
+
+architecture rtl of totalizador_signal is
+
+    signal b0, b1, b2, b3, b4 : unsigned(2 downto 0);
+    signal soma               : unsigned(2 downto 0);
+
+begin
+
+process(clk)
+begin
+    if rising_edge(clk) then
+        
+        -- cada bit vira 0 ou 1
+        if din(0) = '1' then b0 <= "001"; else b0 <= "000"; end if;
+        if din(1) = '1' then b1 <= "001"; else b1 <= "000"; end if;
+        if din(2) = '1' then b2 <= "001"; else b2 <= "000"; end if;
+        if din(3) = '1' then b3 <= "001"; else b3 <= "000"; end if;
+        if din(4) = '1' then b4 <= "001"; else b4 <= "000"; end if;
+
+        -- soma final (usa valores do ciclo anterior!)
+        soma <= b0 + b1 + b2 + b3 + b4;
+
+    end if;
+end process;
+
+count <= soma;
+
+end rtl;
