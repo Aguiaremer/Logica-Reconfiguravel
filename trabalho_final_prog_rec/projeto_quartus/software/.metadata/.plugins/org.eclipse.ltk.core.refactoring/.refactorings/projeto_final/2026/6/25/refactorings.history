@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">
-<refactoring comment="Rename resource &apos;projeto_final/iniche_init.c&apos; to &apos;iniche_init.cpp&apos;" description="Rename resource &apos;iniche_init.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="iniche_init.c" name="iniche_init.cpp" stamp="1781547789013" updateReferences="true"/>
-</session>
